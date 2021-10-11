@@ -5,11 +5,12 @@ import PhoneInput from 'react-native-phone-number-input';
 import { getAsyncStorageData, storeAsyncStorageData } from './LocalStorageUtulity';
 import { WIDTH } from './utility';
 
+const userMsg = "if any country code (e.g 91 for IN ) is included in phone number . That will be removed automatically for convenience."
+
 
 const DialerScreen = () => {
     // const isHermes = () => !!global.HermesInternal;
     // console.log(isHermes())
-    const userMsg = "if any country code (e.g 91 for IN ) is included in phone number . That will be removed automatically for convenience."
     const phoneInput = useRef(null);
 
     const [phoneNumberValue, setPhoneNumberValue] = useState("");
@@ -28,7 +29,7 @@ const DialerScreen = () => {
             setTitleColor('black')
         }
     })
-    const WP_BASE_URL = 'https://wa.me/'
+    // const WP_BASE_URL = 'https://wa.me/'
     const WP_DEEP_LINK = 'whatsapp://send?text=Hi&phone='
 
 
@@ -38,69 +39,50 @@ const DialerScreen = () => {
             Alert.alert('Kindly, enter a phone number');
         }
         else {
-            const invalidprefix = phoneNumberValue.startsWith(countryCode)
-            console.log(countryCode + "---" + phoneNumberValue)
+            let local = ""
+            const invalidprefix = phoneNumberValue.startsWith(countryCode) || phoneNumberValue.startsWith('+' + countryCode)
+            if (phoneNumberValue.startsWith('+' + countryCode)) {
+                local = phoneNumberValue.substring(parseInt(countryCode.length) + 1, phoneNumberValue.length);
+                console.log(local)
+            }
+            else {
+                local = invalidprefix ? phoneNumberValue.substring(countryCode.length, phoneNumberValue.length) : phoneNumberValue;
+            }
+            console.log("correct " + local);
 
-            if (invalidprefix) {
-                const local = phoneNumberValue.substring(countryCode.length, phoneNumberValue.length);
-                console.log("correct " + local);
-                await Linking.canOpenURL(WP_DEEP_LINK).then(
-                    async () => {
-                        await Linking.openURL(WP_DEEP_LINK + countryCode + local)
+            await Linking.canOpenURL(WP_DEEP_LINK).then(
+                async () => {
+                    await Linking.openURL(WP_DEEP_LINK + countryCode + local)
+
+                    // Check if current phone number is same as old. If new we reset contact details
+                    if (await getAsyncStorageData('LAST_USED_NUMBER') !== countryCode + local) {
                         await storeAsyncStorageData('LAST_USED_NUMBER', countryCode + local)
-                        loadLastPhoneNumber()
+                        await resetLastContact();
                     }
-                ).catch(err => Alert.alert('WhatsApp Not installed'))
-
-            }
-            else if (!invalidprefix) {
-                await Linking.canOpenURL(WP_DEEP_LINK).then(
-                    async () => {
-                        await Linking.openURL(WP_DEEP_LINK + countryCode + phoneNumberValue)
-                        await storeAsyncStorageData('LAST_USED_NUMBER', countryCode + phoneNumberValue)
-                        loadLastPhoneNumber()
-                    }
-                ).catch(err => Alert.alert('WhatsApp Not installed'))
-            }
+                }
+            ).catch(err => Alert.alert('WhatsApp Not installed'))
         }
     }
 
 
+
+    const resetLastContact = async () => {
+        setContactName('');
+        await storeAsyncStorageData('LAST_USED_NAME', '');
+        loadLastPhoneNumber()
+    }
 
     const openWhatsAppFromLastPhoneNumber = async () => {
         Linking.canOpenURL(WP_DEEP_LINK).then(whatsappInstalled => {
             Linking.openURL(WP_DEEP_LINK + lastUsedNumber)
         }).catch(err => Alert.alert('WhatsApp Not installed'))
     }
+
+
     async function loadLastPhoneNumber() {
         setLastUsedNumber(await getAsyncStorageData('LAST_USED_NUMBER'))
         setContactName(await getAsyncStorageData('LAST_USED_NAME'))
     }
-
-
-    // const onButtonPress = () => {
-    //     Alert.prompt(
-    //         "Give a temporary Name",
-    //         "This won't be saved to your contact list",
-    //         [
-    //             {
-    //                 text: "Cancel",
-    //                 onPress: () => console.log("Cancel Pressed"),
-    //                 style: "cancel"
-    //             },
-    //             {
-    //                 text: "SAVE",
-    //                 onPress: (contactName) => setContactName(contactName)
-    //             }
-    //         ],
-    //         "plain-text"
-    //     );
-
-    // };
-
-
-
-
 
     useEffect(() => {
         loadLastPhoneNumber()
@@ -114,15 +96,10 @@ const DialerScreen = () => {
     }, [])
 
     return (
-        // <KeyboardAvoidingView
-        //     style={{ flex: 1 }}
-        //     behavior={Platform.OS === "ios" ? "padding" : "height"}
-        // >
         <SafeAreaView style={{ flex: 1 }}>
             <StatusBar
                 translucent
                 animated={true}
-                //barStyle='light-content'
                 backgroundColor='green'
                 hidden={false} />
             <ScrollView contentContainerStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}      >
@@ -143,7 +120,7 @@ const DialerScreen = () => {
                     }}
                     withShadow
                     autoFocus={false}
-                    containerStyle={{ width: WIDTH - 20, borderRadius: 6, height: 70 }}
+                    containerStyle={{ borderRadius: 6, }}
                 />
 
 
@@ -152,7 +129,7 @@ const DialerScreen = () => {
                 </TouchableOpacity>
                 {
                     lastUsedNumber ? <TouchableOpacity onPress={() => openWhatsAppFromLastPhoneNumber()} style={{
-                        backgroundColor: 'wheat', padding: 8, width: WIDTH - 20,
+                        backgroundColor: 'wheat', padding: 8, width: WIDTH - 40,
                         marginTop: 10, borderRadius: 6
                     }}>
                         <Text onPress={() => setIsModalVisible(true)} style={{ color: `${titleColor}`, fontWeight: 'bold', textAlign: 'left', fontSize: 16, paddingHorizontal: 10, paddingBottom: 6 }}>{contactName ? `${contactName}` : 'Click me to add name'}</Text>

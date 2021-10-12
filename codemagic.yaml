@@ -1,0 +1,29 @@
+
+
+workflows:
+  my-workflow:
+    environment:
+      node: 16.9.0
+      npm: latest
+
+workflows:
+  my-workflow:
+    instance_type: linux
+
+workflows:
+  my-workflow:
+    scripts:
+      - name: Build Android APK
+        working_directory: android
+        script: ./gradlew assembleRelease
+    artifacts:
+      - app/build/outputs/**/**/*.apk
+
+workflows:
+  my-workflow:
+    publishing:
+      email:
+        recipients:
+          - sagarbiswal569@gmail.com
+          - jitunayak715@gmail.com
+
